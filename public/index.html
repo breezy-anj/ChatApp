@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Simple Rooms</title>
+  </head>
+  <body>
+    <div id="room-selection">
+      <input id="room-input" placeholder="Enter Room Name" />
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div id="chat-section" style="display: none">
+      <h2 id="current-room"></h2>
+      <ul id="messages"></ul>
+      <input id="msg-input" placeholder="Type a message..." />
+      <button onclick="sendMsg()">Send</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      let currentRoom = "";
+
+      function joinRoom() {
+        const room = document.getElementById("room-input").value;
+        if (room) {
+          currentRoom = room;
+          socket.emit("join room", room);
+          document.getElementById("room-selection").style.display = "none";
+          document.getElementById("chat-section").style.display = "block";
+          document.getElementById("current-room").innerText = `Room: ${room}`;
+        }
+      }
+
+      function sendMsg() {
+        const msg = document.getElementById("msg-input").value;
+        if (msg) {
+          socket.emit("chat message", { room: currentRoom, msg: msg });
+          document.getElementById("msg-input").value = "";
+        }
+      }
+
+      socket.on("message", (msg) => {
+        const li = document.createElement("li");
+        li.textContent = msg;
+        document.getElementById("messages").appendChild(li);
+      });
+    </script>
+  </body>
+</html>
