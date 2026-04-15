@@ -1,49 +1,133 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Simple Rooms</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="room-selection">
-      <input id="room-input" placeholder="Enter Room Name" />
-      <button onclick="joinRoom()">Join Room</button>
-    </div>
+    <!-- Main App Container -->
+    <div class="app-container">
+      <div id="room-selection" class="card fade-in">
+        <h1 class="logo-title">Chat App</h1>
+        <p class="subtitle">Join a room to start connecting</p>
+        <div class="input-group">
+          <input id="username-input" placeholder="Your Username..." autocomplete="off" />
+          <input id="room-input" placeholder="Enter Room Name..." autocomplete="off" />
+          <button onclick="joinRoom()" class="btn-primary">
+            <span>Join Room</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </div>
 
-    <div id="chat-section" style="display: none">
-      <h2 id="current-room"></h2>
-      <ul id="messages"></ul>
-      <input id="msg-input" placeholder="Type a message..." />
-      <button onclick="sendMsg()">Send</button>
+      <div id="chat-section" class="card chat-card" style="display: none">
+        <div class="chat-header">
+          <div class="header-info">
+            <h2 id="current-room"></h2>
+            <span class="status-indicator">
+              <span class="dot"></span> Online
+            </span>
+          </div>
+        </div>
+        
+        <div class="chat-messages-container">
+          <ul id="messages"></ul>
+        </div>
+        
+        <div class="chat-input-area">
+          <input id="msg-input" placeholder="Type your message..." autocomplete="off" />
+          <button onclick="sendMsg()" class="btn-primary btn-send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
       let currentRoom = "";
+      let currentUsername = "";
 
       function joinRoom() {
-        const room = document.getElementById("room-input").value;
-        if (room) {
+        const room = document.getElementById("room-input").value.trim();
+        const username = document.getElementById("username-input").value.trim();
+        if (room && username) {
           currentRoom = room;
-          socket.emit("join room", room);
-          document.getElementById("room-selection").style.display = "none";
-          document.getElementById("chat-section").style.display = "block";
-          document.getElementById("current-room").innerText = `Room: ${room}`;
+          currentUsername = username;
+          socket.emit("join room", { username, roomName: room });
+          
+          const roomSelection = document.getElementById("room-selection");
+          const chatSection = document.getElementById("chat-section");
+          
+          roomSelection.style.opacity = '0';
+          setTimeout(() => {
+            roomSelection.style.display = "none";
+            chatSection.style.display = "flex"; 
+            void chatSection.offsetWidth;
+            chatSection.classList.add('slide-up');
+          }, 300);
+          
+          document.getElementById("current-room").innerText = room;
+        } else {
+          alert('Please enter both a username and a room name.');
         }
       }
+
+      document.getElementById("room-input").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") joinRoom();
+      });
+      document.getElementById("username-input").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") joinRoom();
+      });
 
       function sendMsg() {
-        const msg = document.getElementById("msg-input").value;
+        const msgInput = document.getElementById("msg-input");
+        const msg = msgInput.value.trim();
         if (msg) {
-          socket.emit("chat message", { room: currentRoom, msg: msg });
-          document.getElementById("msg-input").value = "";
+          socket.emit("chat message", { room: currentRoom, username: currentUsername, msg: msg });
+          msgInput.value = "";
         }
       }
 
-      socket.on("message", (msg) => {
+      document.getElementById("msg-input").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") sendMsg();
+      });
+
+      socket.on("message", (data) => {
+        const messages = document.getElementById("messages");
         const li = document.createElement("li");
-        li.textContent = msg;
-        document.getElementById("messages").appendChild(li);
+        
+        if (data.username === "System") {
+          li.className = "message-item system-msg slide-in-right";
+          li.textContent = data.msg;
+        } else {
+          li.className = data.username === currentUsername ? "message-item self slide-in-right" : "message-item slide-in-right";
+          
+          const userSpan = document.createElement("span");
+          userSpan.className = "msg-username";
+          userSpan.textContent = data.username + ": ";
+          
+          const textSpan = document.createElement("span");
+          textSpan.textContent = data.msg;
+          
+          li.appendChild(userSpan);
+          li.appendChild(textSpan);
+        }
+        
+        messages.appendChild(li);
+        
+        const container = document.querySelector(".chat-messages-container");
+        container.scrollTop = container.scrollHeight;
       });
     </script>
   </body>

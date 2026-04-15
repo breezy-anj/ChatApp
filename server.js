@@ -11,17 +11,17 @@ app.use(express.static("public"));
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join room", (roomName) => {
+  socket.on("join room", ({ username, roomName }) => {
     socket.join(roomName);
-    console.log(`User ${socket.id} joined room: ${roomName}`);
+    console.log(`User ${username} joined room: ${roomName}`);
 
     socket
       .to(roomName)
-      .emit("message", `A new user joined the ${roomName} room.`);
+      .emit("message", { username: "System", msg: `${username} joined the ${roomName} room.` });
   });
 
-  socket.on("chat message", ({ room, msg }) => {
-    io.to(room).emit("message", msg);
+  socket.on("chat message", ({ room, username, msg }) => {
+    io.to(room).emit("message", { username, msg });
   });
 
   socket.on("disconnect", () => {
